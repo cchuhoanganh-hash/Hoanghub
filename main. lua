@@ -1,0 +1,367 @@
+-- [[ HOANG HUB PREMIUM - MAX FPS OPTIMIZATION v12 ]] --
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+local Camera = workspace.CurrentCamera
+
+-- CẤU HÌNH BIẾN TOÀN CỤC
+local Color_NoTarget = Color3.fromRGB(255, 0, 0)   
+local Color_HasTarget = Color3.fromRGB(180, 0, 255) 
+local Color_Health = Color3.fromRGB(0, 255, 100)    
+local Color_Warning = Color3.fromRGB(255, 50, 50)
+
+local FOV_Display_Radius = 40  
+local FOV_Hitbox_Radius = 180  
+local FOV_Y_Offset = 0          
+local HitChance = 70            
+
+local ESP_Enabled = true         
+local SilentAim_Enabled = true   
+local WallCheckEnabled = true    
+local TargetModeLegit = true     
+
+local TARGET_PARTS = {"Head", "UpperTorso", "HumanoidRootPart"}
+local ClosestTarget = nil -- [FIXED] Khai báo Local để tránh rò rỉ bộ nhớ
+
+------------------------------------------------------------------------
+-- KHỞI TẠO HỆ THỐNG GUI
+------------------------------------------------------------------------
+local MainGui = CoreGui:FindFirstChild("HoangHub_PremiumMenu")
+if MainGui then MainGui:Destroy() end
+
+MainGui = Instance.new("ScreenGui")
+MainGui.Name = "HoangHub_PremiumMenu"
+MainGui.Parent = CoreGui
+MainGui.ResetOnSpawn = false
+
+local FOVFrame = Instance.new("Frame")
+FOVFrame.Name = "FOV_Circle"
+FOVFrame.Parent = MainGui
+FOVFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+FOVFrame.Size = UDim2.new(0, FOV_Display_Radius * 2, 0, FOV_Display_Radius * 2)
+FOVFrame.BackgroundTransparency = 1 
+FOVFrame.BorderSizePixel = 0
+
+local UIStrokeFOV = Instance.new("UIStroke")
+UIStrokeFOV.Parent = FOVFrame
+UIStrokeFOV.Thickness = 2.0
+UIStrokeFOV.Color = Color_NoTarget
+
+local UICornerFOV = Instance.new("UICorner")
+UICornerFOV.CornerRadius = UDim.new(1, 0)
+UICornerFOV.Parent = FOVFrame
+
+local MenuButton = Instance.new("TextButton")
+MenuButton.Name = "MenuButton"
+MenuButton.Parent = MainGui
+MenuButton.Position = UDim2.new(0, 20, 0, 200)
+MenuButton.Size = UDim2.new(0, 55, 0, 55)
+MenuButton.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+MenuButton.Text = "H"
+MenuButton.TextColor3 = Color3.fromRGB(180, 0, 255)
+MenuButton.TextSize = 24
+MenuButton.Font = Enum.Font.GothamBold
+local ButtonCorner = Instance.new("UICorner") ButtonCorner.CornerRadius = UDim.new(1, 0) ButtonCorner.Parent = MenuButton
+local ButtonStroke = Instance.new("UIStroke") ButtonStroke.Thickness = 2 ButtonStroke.Color = Color3.fromRGB(180, 0, 255) ButtonStroke.Parent = MenuButton
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = MainGui
+MainFrame.Position = UDim2.new(0.5, -130, 0.5, -190) 
+MainFrame.Size = UDim2.new(0, 260, 0, 380)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+MainFrame.BorderSizePixel = 0
+MainFrame.Visible = false
+local FrameCorner = Instance.new("UICorner") FrameCorner.CornerRadius = UDim.new(0, 8) FrameCorner.Parent = MainFrame
+local FrameStroke = Instance.new("UIStroke") FrameStroke.Thickness = 1.5 FrameStroke.Color = Color3.fromRGB(60, 60, 75) FrameStroke.Parent = MainFrame
+
+local Title = Instance.new("TextLabel") Title.Parent = MainFrame Title.Size = UDim2.new(1, -70, 0, 35) Title.Position = UDim2.new(0, 15, 0, 0) Title.BackgroundTransparency = 1 Title.Text = "HOANG HUB LEGIT V12" Title.TextColor3 = Color3.fromRGB(255, 255, 255) Title.TextXAlignment = Enum.TextXAlignment.Left Title.Font = Enum.Font.GothamBold Title.TextSize = 13
+local MinimizeBtn = Instance.new("TextButton") MinimizeBtn.Parent = MainFrame MinimizeBtn.Size = UDim2.new(0, 30, 0, 35) MinimizeBtn.Position = UDim2.new(1, -65, 0, 0) MinimizeBtn.BackgroundTransparency = 1 MinimizeBtn.Text = "—" MinimizeBtn.TextColor3 = Color3.fromRGB(200, 200, 200) MinimizeBtn.TextSize = 14 MinimizeBtn.Font = Enum.Font.GothamBold
+local CloseBtn = Instance.new("TextButton") CloseBtn.Parent = MainFrame CloseBtn.Size = UDim2.new(0, 30, 0, 35) CloseBtn.Position = UDim2.new(1, -35, 0, 0) CloseBtn.BackgroundTransparency = 1 CloseBtn.Text = "✕" CloseBtn.TextColor3 = Color3.fromRGB(255, 75, 75) CloseBtn.TextSize = 14 CloseBtn.Font = Enum.Font.GothamBold
+local Line = Instance.new("Frame") Line.Parent = MainFrame Line.Position = UDim2.new(0, 0, 0, 35) Line.Size = UDim2.new(1, 0, 0, 1) Line.BackgroundColor3 = Color3.fromRGB(45, 45, 55) Line.BorderSizePixel = 0
+
+local Container = Instance.new("ScrollingFrame")
+Container.Name = "Container"
+Container.Parent = MainFrame
+Container.Position = UDim2.new(0, 0, 0, 36)
+Container.Size = UDim2.new(1, 0, 1, -36)
+Container.BackgroundTransparency = 1
+Container.BorderSizePixel = 0
+Container.CanvasSize = UDim2.new(0, 0, 0, 460) 
+Container.ScrollBarThickness = 3
+Container.ScrollBarImageColor3 = Color3.fromRGB(180, 0, 255)
+local UIListLayout = Instance.new("UIListLayout") UIListLayout.Parent = Container UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder UIListLayout.Padding = UDim.new(0, 10)
+local UIPadding = Instance.new("UIPadding") UIPadding.Parent = Container UIPadding.PaddingTop = UDim.new(0, 12) UIPadding.PaddingLeft = UDim.new(0, 15) UIPadding.PaddingRight = UDim.new(0, 15)
+
+------------------------------------------------------------------------
+-- TẠO CÁC PHẦN TỬ TRONG GUI
+------------------------------------------------------------------------
+local function createCheckbox(text, default, callback)
+    local RowFrame = Instance.new("Frame") RowFrame.Size = UDim2.new(1, 0, 0, 35) RowFrame.BackgroundTransparency = 1 RowFrame.Parent = Container
+    local Label = Instance.new("TextLabel") Label.Parent = RowFrame Label.Size = UDim2.new(1, -45, 1, 0) Label.BackgroundTransparency = 1 Label.Text = text Label.TextColor3 = Color3.fromRGB(220, 220, 225) Label.TextXAlignment = Enum.TextXAlignment.Left Label.Font = Enum.Font.GothamMedium Label.TextSize = 12
+    local BoxButton = Instance.new("TextButton") BoxButton.Parent = RowFrame BoxButton.AnchorPoint = Vector2.new(1, 0.5) BoxButton.Position = UDim2.new(1, 0, 0.5, 0) BoxButton.Size = UDim2.new(0, 22, 0, 22) BoxButton.BackgroundColor3 = Color3.fromRGB(15, 15, 20) BoxButton.Text = default and "✓" or "" BoxButton.TextColor3 = Color3.fromRGB(180, 0, 255) BoxButton.Font = Enum.Font.GothamBold BoxButton.TextSize = 14
+    local BoxCorner = Instance.new("UICorner") BoxCorner.CornerRadius = UDim.new(0, 4) BoxCorner.Parent = BoxButton
+    local BoxStroke = Instance.new("UIStroke") BoxStroke.Thickness = 1.5 BoxStroke.Color = default and Color3.fromRGB(180, 0, 255) or Color3.fromRGB(60, 60, 70) BoxStroke.Parent = BoxButton
+    local active = default
+    BoxButton.MouseButton1Click:Connect(function() active = not active BoxButton.Text = active and "✓" or "" BoxStroke.Color = active and Color3.fromRGB(180, 0, 255) or Color3.fromRGB(60, 60, 70) callback(active) end)
+end
+
+local function createMiniInput(parent, text, default, isLeft, callback)
+    local ElementFrame = Instance.new("Frame") ElementFrame.Size = UDim2.new(0.5, -6, 1, 0) ElementFrame.Position = isLeft and UDim2.new(0, 0, 0, 0) or UDim2.new(0.5, 6, 0, 0) ElementFrame.BackgroundTransparency = 1 ElementFrame.Parent = parent
+    local Label = Instance.new("TextLabel") Label.Parent = ElementFrame Label.Size = UDim2.new(1, 0, 0, 18) Label.BackgroundTransparency = 1 Label.Text = text Label.TextColor3 = Color3.fromRGB(170, 170, 180) Label.TextXAlignment = Enum.TextXAlignment.Left Label.Font = Enum.Font.GothamMedium Label.TextSize = 10
+    local TextBox = Instance.new("TextBox") TextBox.Parent = ElementFrame TextBox.Size = UDim2.new(1, 0, 0, 32) TextBox.Position = UDim2.new(0, 0, 0, 20) TextBox.BackgroundColor3 = Color3.fromRGB(15, 15, 20) TextBox.Text = tostring(default) TextBox.TextColor3 = Color3.fromRGB(255, 255, 255) TextBox.Font = Enum.Font.GothamBold TextBox.TextSize = 12 TextBox.ClearTextOnFocus = false
+    local TBCorner = Instance.new("UICorner") TBCorner.CornerRadius = UDim.new(0, 4) TBCorner.Parent = TextBox
+    local TBStroke = Instance.new("UIStroke") TBStroke.Thickness = 1 TBStroke.Color = Color3.fromRGB(60, 60, 75) TBStroke.Parent = TextBox
+    TextBox.FocusLost:Connect(function() local num = tonumber(TextBox.Text) if num then callback(num) else TextBox.Text = tostring(default) end end)
+end
+
+createCheckbox("Kích Hoạt Định Vị (ESP Nhân Vật)", ESP_Enabled, function(state) ESP_Enabled = state end)
+createCheckbox("Tự Động Ghim Đạn (Auto Aimbot)", SilentAim_Enabled, function(state) SilentAim_Enabled = state end)
+
+local SplitGridFrame = Instance.new("Frame") SplitGridFrame.Size = UDim2.new(1, 0, 0, 55) SplitGridFrame.BackgroundTransparency = 1 SplitGridFrame.Parent = Container
+createMiniInput(SplitGridFrame, "KÍCH CỠ FOV", FOV_Display_Radius, true, function(val)
+    FOV_Display_Radius = val FOV_Hitbox_Radius = val * 4.5
+    FOVFrame.Size = UDim2.new(0, FOV_Display_Radius * 2, 0, FOV_Display_Radius * 2)
+end)
+createMiniInput(SplitGridFrame, "ĐỘ CAO FOV (OFS)", FOV_Y_Offset, false, function(val) FOV_Y_Offset = val end)
+
+local HitChanceFrame = Instance.new("Frame") HitChanceFrame.Size = UDim2.new(1, 0, 0, 55) HitChanceFrame.BackgroundTransparency = 1 HitChanceFrame.Parent = Container
+local HCLabel = Instance.new("TextLabel") HCLabel.Parent = HitChanceFrame HCLabel.Size = UDim2.new(1, 0, 0, 18) HCLabel.BackgroundTransparency = 1 HCLabel.Text = "TỶ LỆ TRÚNG ĐẠN (%)" HCLabel.TextColor3 = Color3.fromRGB(170, 170, 180) HCLabel.TextXAlignment = Enum.TextXAlignment.Left HCLabel.Font = Enum.Font.GothamMedium HCLabel.TextSize = 10
+local HCTextBox = Instance.new("TextBox") HCTextBox.Parent = HitChanceFrame HCTextBox.Size = UDim2.new(1, 0, 0, 35) HCTextBox.Position = UDim2.new(0, 0, 0, 20) HCTextBox.BackgroundColor3 = Color3.fromRGB(15, 15, 20) HCTextBox.Text = tostring(HitChance) HCTextBox.TextColor3 = Color3.fromRGB(180, 0, 255) HCTextBox.Font = Enum.Font.GothamBold HCTextBox.TextSize = 14 HCTextBox.ClearTextOnFocus = false
+local HCCorner = Instance.new("UICorner") HCCorner.CornerRadius = UDim.new(0, 5) HCCorner.Parent = HCTextBox
+local HCStroke = Instance.new("UIStroke") HCStroke.Thickness = 1.5 HCStroke.Color = Color3.fromRGB(180, 0, 255) HCStroke.Parent = HCTextBox
+HCTextBox.FocusLost:Connect(function() local num = tonumber(HCTextBox.Text) if num then HitChance = math.clamp(num, 0, 100) HCTextBox.Text = tostring(HitChance) else HCTextBox.Text = tostring(HitChance) end end)
+
+createCheckbox("Chống Bắn Xuyên Tường (Legit)", WallCheckEnabled, function(state) WallCheckEnabled = state end)
+createCheckbox("Vị Trí Ghim Ngẫu Nhiên (Legit)", TargetModeLegit, function(state) TargetModeLegit = state end)
+
+MenuButton.MouseButton1Click:Connect(function() MainFrame.Visible = not MainFrame.Visible end)
+MinimizeBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false end)
+
+local function makeDraggable(gui)
+    local dragging, dragInput, dragStart, startPos
+    gui.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true dragStart = input.Position startPos = gui.Position input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end) end
+    end)
+    gui.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement then dragInput = input end end)
+    RunService.RenderStepped:Connect(function()
+        if dragging and dragInput then local delta = dragInput.Position - dragStart gui.Position = UDim2.new(startPos.Width.Scale, startPos.Width.Offset + delta.X, startPos.Height.Scale, startPos.Height.Offset + delta.Y) end
+    end)
+end
+makeDraggable(MenuButton)
+
+------------------------------------------------------------------------
+-- ESP ĐỊNH VỊ NATIVE
+------------------------------------------------------------------------
+local ESP_Objects = {}
+local function createESP(player)
+    if player == LocalPlayer or ESP_Objects[player] then return end
+    local playerCircle = Drawing.new("Circle") playerCircle.Visible = false playerCircle.Thickness = 1.5 playerCircle.NumSides = 14 playerCircle.Radius = 15 playerCircle.Filled = false playerCircle.Transparency = 0.7 playerCircle.Color = Color_NoTarget
+    local bgBar = Drawing.new("Square") bgBar.Visible = false bgBar.Filled = true bgBar.Thickness = 1 bgBar.Color = Color3.fromRGB(0, 0, 0) bgBar.Transparency = 0.5
+    local mainBar = Drawing.new("Square") mainBar.Visible = false mainBar.Filled = true mainBar.Thickness = 1 mainBar.Color = Color_Health
+    local distText = Drawing.new("Text") distText.Visible = false distText.Size = 12 distText.Center = true distText.Outline = true distText.Color = Color3.fromRGB(255, 255, 255)
+    ESP_Objects[player] = {PlayerCircle = playerCircle, BackgroundBar = bgBar, MainBar = mainBar, DistanceText = distText}
+end
+
+local function removeESP(player)
+    if ESP_Objects[player] then
+        pcall(function() ESP_Objects[player].PlayerCircle:Remove() ESP_Objects[player].BackgroundBar:Remove() ESP_Objects[player].MainBar:Remove() ESP_Objects[player].DistanceText:Remove() end)
+        ESP_Objects[player] = nil
+    end
+end
+for _, player in ipairs(Players:GetPlayers()) do createESP(player) end
+local c1 = Players.PlayerAdded:Connect(createESP) local c2 = Players.PlayerRemoving:Connect(removeESP)
+
+local WarningLabel = Drawing.new("Text") WarningLabel.Visible = false WarningLabel.Size = 15 WarningLabel.Center = true WarningLabel.Outline = true WarningLabel.Color = Color_Warning
+
+------------------------------------------------------------------------
+-- THUẬT TOÁN TỐI ƯU HÓA: CHỈ RAYCAST KẺ ĐỊCH GẦN NHẤT
+------------------------------------------------------------------------
+local function isVisible(part, character)
+    if not WallCheckEnabled then return true end
+    local origin = Camera.CFrame.Position
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, character}
+    return workspace:Raycast(origin, part.Position - origin, raycastParams) == nil
+end
+
+local function getClosestPlayerInFOV()
+    if not Camera then return nil end
+    local bestTarget = nil
+    local shortestDistance = FOV_Hitbox_Radius
+    local screenCenter = Vector2.new(Camera.ViewportSize.X * 0.5, (Camera.ViewportSize.Y * 0.5) + FOV_Y_Offset)
+    
+    -- TỐI ƯU 1: Tìm ra duy nhất 1 kẻ địch gần tâm ngắm nhất (Chưa xử lý Raycast nặng)
+    for player, _ in pairs(ESP_Objects) do
+        if player.Character then
+            local targetPart = player.Character:FindFirstChild("Head") 
+            local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+            
+            if targetPart and humanoid and humanoid.Health > 0 then
+                local screenPos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+                if onScreen then
+                    local distance = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
+                    if distance < shortestDistance then
+                        shortestDistance = distance
+                        bestTarget = {part = targetPart, char = player.Character}
+                    end
+                end
+            end
+        end
+    end
+    
+    -- TỐI ƯU 2: Chỉ bắn tia Raycast kiểm tra đúng 1 kẻ địch này (Tiết kiệm cực lớn tài nguyên)
+    if bestTarget and isVisible(bestTarget.part, bestTarget.char) then
+        if TargetModeLegit then
+            return bestTarget.char:FindFirstChild(TARGET_PARTS[math.random(1, 3)]) or bestTarget.part
+        end
+        return bestTarget.part
+    end
+    return nil
+end
+
+------------------------------------------------------------------------
+-- SILENT AIM ĐƯỢC CẤU TRÚC LẠI ĐỂ MAX FPS
+------------------------------------------------------------------------
+local gmt = getrawmetatable(game)
+setreadonly(gmt, false)
+local oldNamecall = gmt.__namecall local oldIndex = gmt.__index
+
+local function shouldHit()
+    if not SilentAim_Enabled then return false end
+    return math.random(1, 100) <= HitChance
+end
+
+gmt.__index = newcclosure(function(self, index)
+    if self == Mouse and (index == "Hit" or index == "Target") then
+        if ClosestTarget and ClosestTarget.Parent and shouldHit() then 
+            return index == "Hit" and ClosestTarget.CFrame or ClosestTarget 
+        end
+    end
+    return oldIndex(self, index)
+end)
+
+gmt.__namecall = newcclosure(function(self, ...)
+    local method = getnamecallmethod() 
+    -- TỐI ƯU 3: Kiểm tra ClosestTarget trước để tránh unpack args lãng phí tài nguyên
+    if ClosestTarget and ClosestTarget.Parent and SilentAim_Enabled and shouldHit() then
+        local args = {...}
+        if method == "Raycast" and self == workspace then
+            args[2] = (ClosestTarget.Position - args[1]).Unit * 1000
+            return oldNamecall(self, unpack(args))
+        elseif method == "FindPartOnRay" or method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRayWithWhitelist" then
+            args[1] = Ray.new(args[1].Origin, (ClosestTarget.Position - args[1].Origin).Unit * 1000)
+            return oldNamecall(self, unpack(args))
+        end
+    end
+    return oldNamecall(self, ...)
+end)
+setreadonly(gmt, true)
+
+------------------------------------------------------------------------
+-- VÒNG LẶP CHÍNH SIÊU NHẸ
+------------------------------------------------------------------------
+local renderConnection = nil
+local function startRenderLoop()
+    if renderConnection then renderConnection:Disconnect() end
+    renderConnection = RunService.RenderStepped:Connect(function()
+        Camera = workspace.CurrentCamera or workspace:FindFirstChildOfClass("Camera")
+        if not LocalPlayer or not Camera then return end
+        
+        local myChar = LocalPlayer.Character
+        local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
+        
+        FOVFrame.Position = UDim2.new(0, Camera.ViewportSize.X * 0.5, 0, (Camera.ViewportSize.Y * 0.5) + FOV_Y_Offset)
+        
+        if SilentAim_Enabled then
+            ClosestTarget = getClosestPlayerInFOV()
+            UIStrokeFOV.Color = ClosestTarget and Color_HasTarget or Color_NoTarget
+        else
+            ClosestTarget = nil
+            UIStrokeFOV.Color = Color_NoTarget
+        end
+        
+        local closestEnemyDistance = math.huge 
+        
+        for player, obj in pairs(ESP_Objects) do
+            local hasValidTarget = false
+            if player.Character then
+                local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+                local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+                
+                if hrp and humanoid and humanoid.Health > 0 then
+                    hasValidTarget = true
+                    local distanceInStuds = 0
+                    if myHrp then
+                        distanceInStuds = math.round((myHrp.Position - hrp.Position).Magnitude)
+                        if distanceInStuds < closestEnemyDistance then closestEnemyDistance = distanceInStuds end
+                    end
+                    
+                    local screenPos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+                    
+                    if onScreen and ESP_Enabled then
+                        local isTargeted = ClosestTarget and ClosestTarget.Parent == player.Character
+                        obj.PlayerCircle.Position = Vector2.new(screenPos.X, screenPos.Y)
+                        obj.PlayerCircle.Color = isTargeted and Color_HasTarget or Color_NoTarget
+                        obj.PlayerCircle.Radius = math.clamp(3000 / (Camera.CFrame.Position - hrp.Position).Magnitude, 5, 18)
+                        
+                        local barWidth, barHeight = 28, 3
+                        local barX = screenPos.X - (barWidth * 0.5)
+                        local barY = screenPos.Y - obj.PlayerCircle.Radius - 7
+                        
+                        obj.BackgroundBar.Size = Vector2.new(barWidth, barHeight)
+                        obj.BackgroundBar.Position = Vector2.new(barX, barY)
+                        obj.MainBar.Size = Vector2.new(barWidth * (humanoid.Health / humanoid.MaxHealth), barHeight)
+                        obj.MainBar.Position = Vector2.new(barX, barY)
+                        obj.MainBar.Color = isTargeted and Color_HasTarget or Color_Health
+                        
+                        if myHrp then
+                            obj.DistanceText.Position = Vector2.new(screenPos.X, barY - 14)
+                            obj.DistanceText.Text = "[" .. distanceInStuds .. " studs]"
+                            obj.DistanceText.Visible = true
+                        end
+                        obj.PlayerCircle.Visible, obj.BackgroundBar.Visible, obj.MainBar.Visible = true, true, true
+                    else
+                        obj.PlayerCircle.Visible, obj.BackgroundBar.Visible, obj.MainBar.Visible, obj.DistanceText.Visible = false, false, false, false
+                    end
+                end
+            end
+            if not hasValidTarget then
+                obj.PlayerCircle.Visible, obj.BackgroundBar.Visible, obj.MainBar.Visible, obj.DistanceText.Visible = false, false, false, false
+            end
+        end
+        
+        if closestEnemyDistance <= 200 then
+            WarningLabel.Position = Vector2.new(Camera.ViewportSize.X * 0.5, (Camera.ViewportSize.Y * 0.5) + FOV_Hitbox_Radius + FOV_Y_Offset + 25)
+            WarningLabel.Text = "⚠️ ĐỊCH ĐANG Ở GẦN: " .. closestEnemyDistance .. " STUDS!"
+            WarningLabel.Visible = true
+        else
+            WarningLabel.Visible = false
+        end
+    end)
+end
+
+------------------------------------------------------------------------
+-- DỌN SẠCH DỮ LIỆU KHI TẮT HACK
+------------------------------------------------------------------------
+CloseBtn.MouseButton1Click:Connect(function()
+    if renderConnection then renderConnection:Disconnect() end
+    if c1 then c1:Disconnect() end
+    if c2 then c2:Disconnect() end
+    for _, obj in pairs(ESP_Objects) do
+        pcall(function() obj.PlayerCircle:Remove() obj.BackgroundBar:Remove() obj.MainBar:Remove() obj.DistanceText:Remove() end)
+    end
+    pcall(function() WarningLabel:Remove() end)
+    setreadonly(gmt, false) gmt.__index = oldIndex gmt.__namecall = oldNamecall setreadonly(gmt, true) MainGui:Destroy()
+end)
+
+if LocalPlayer.Character then startRenderLoop() end
+LocalPlayer.CharacterAdded:Connect(function(char) char:WaitForChild("HumanoidRootPart", 5) startRenderLoop() end)
+
